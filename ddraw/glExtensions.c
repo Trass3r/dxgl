@@ -128,9 +128,6 @@ Please contact your graphics card manufacturer for an updated driver.\r\n\r\nThi
 	if((strstr((char*)glextensions,"GL_ARB_framebuffer_object") || (ext->glver_major >= 3))
 		&& !dxglcfg.DebugNoArbFramebuffer) ext->GLEXT_ARB_framebuffer_object = 1;
 	else ext->GLEXT_ARB_framebuffer_object = 0;
-	if(strstr((char*)glextensions,"GL_EXT_framebuffer_object") && !dxglcfg.DebugNoExtFramebuffer)
-		ext->GLEXT_EXT_framebuffer_object = 1;
-	else ext->GLEXT_EXT_framebuffer_object = 0;
 	if (strstr((char*)glextensions, "GL_ARB_texture_rectangle") || (ext->glver_major > 3) ||
 		((ext->glver_major == 3) && (ext->glver_minor == 1))) ext->GLEXT_ARB_texture_rectangle = 1;
 	else ext->GLEXT_ARB_texture_rectangle = 0;
@@ -165,8 +162,6 @@ Please contact your graphics card manufacturer for an updated driver.\r\n\r\nThi
 	if(strstr((char*)glextensions,"GL_EXT_gpu_shader4") && !dxglcfg.DebugNoGpuShader4)
 		ext->GLEXT_EXT_gpu_shader4 = 1;
 	else ext->GLEXT_EXT_gpu_shader4 = 0;
-	if(strstr((char*)glextensions,"GL_GREMEDY_frame_terminator")) ext->GLEXT_GREMEDY_frame_terminator = 1;
-	else ext->GLEXT_GREMEDY_frame_terminator = 0;
 	broken_fbo = TRUE;
 	if(ext->GLEXT_ARB_framebuffer_object)
 	{
@@ -178,18 +173,6 @@ Please contact your graphics card manufacturer for an updated driver.\r\n\r\nThi
 		ext->glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)wglGetProcAddress("glFramebufferTexture2D");
 		ext->glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)wglGetProcAddress("glCheckFramebufferStatus");
 		ext->glDeleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC)wglGetProcAddress("glDeleteFramebuffers");
-		broken_fbo = FALSE;
-	}
-	if(ext->GLEXT_EXT_framebuffer_object)
-	{
-		ext->glGenFramebuffersEXT = (PFNGLGENFRAMEBUFFERSEXTPROC)wglGetProcAddress("glGenFramebuffersEXT");
-		if(!ext->glGenFramebuffersEXT) ext->GLEXT_EXT_framebuffer_object = 0;
-		ext->glBindFramebufferEXT = (PFNGLBINDFRAMEBUFFEREXTPROC)wglGetProcAddress("glBindFramebufferEXT");
-		ext->glGenRenderbuffersEXT = (PFNGLGENRENDERBUFFERSEXTPROC)wglGetProcAddress("glGenRenderbuffersEXT");
-		ext->glBindRenderbufferEXT = (PFNGLBINDRENDERBUFFEREXTPROC)wglGetProcAddress("glBindRenderbufferEXT");
-		ext->glFramebufferTexture2DEXT = (PFNGLFRAMEBUFFERTEXTURE2DEXTPROC)wglGetProcAddress("glFramebufferTexture2DEXT");
-		ext->glCheckFramebufferStatusEXT = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)wglGetProcAddress("glCheckFramebufferStatusEXT");
-		ext->glDeleteFramebuffersEXT = (PFNGLDELETEFRAMEBUFFERSEXTPROC)wglGetProcAddress("glDeleteFramebuffersEXT");
 		broken_fbo = FALSE;
 	}
 	broken_texrect = TRUE;
@@ -228,10 +211,6 @@ Please contact your graphics card manufacturer for an updated driver.\r\n\r\nThi
 		ext->glSamplerParameteri = (PFNGLSAMPLERPARAMETERIPROC)wglGetProcAddress("glSamplerParameteri");
 		ext->glSamplerParameterfv = (PFNGLSAMPLERPARAMETERFVPROC)wglGetProcAddress("glSamplerParameterfv");
 		ext->glSamplerParameteriv = (PFNGLSAMPLERPARAMETERIVPROC)wglGetProcAddress("glSamplerParameteriv");
-	}
-	if (ext->GLEXT_GREMEDY_frame_terminator)
-	{
-		ext->glFrameTerminatorGREMEDY = (PFNGLFRAMETERMINATORGREMEDYPROC)wglGetProcAddress("glFrameTerminatorGREMEDY");
 	}
 	if(broken_fbo)
 	{

@@ -119,7 +119,6 @@ void glUtil_InitFBO(glUtil *This, FBO *fbo)
 	{
 		ZeroMemory(fbo,sizeof(FBO));
 		if(This->ext->GLEXT_ARB_framebuffer_object) This->ext->glGenFramebuffers(1,&fbo->fbo);
-		else if(This->ext->GLEXT_EXT_framebuffer_object) This->ext->glGenFramebuffersEXT(1,&fbo->fbo);
 	}
 }
 
@@ -131,12 +130,6 @@ void glUtil_DeleteFBO(glUtil *This, FBO *fbo)
 		{
 			if(This->currentfbo == fbo) This->ext->glBindFramebuffer(GL_FRAMEBUFFER,0);
 			This->ext->glDeleteFramebuffers(1,&fbo->fbo);
-			ZeroMemory(fbo,sizeof(FBO));
-		}
-		else if(This->ext->GLEXT_EXT_framebuffer_object)
-		{
-			if(This->currentfbo == fbo) This->ext->glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,0);
-			This->ext->glDeleteFramebuffersEXT(1,&fbo->fbo);
 			ZeroMemory(fbo,sizeof(FBO));
 		}
 	}
@@ -167,35 +160,6 @@ void glUtil_SetFBOTexture(glUtil *This, FBO *fbo, glTexture *color, glTexture *z
 		fbo->stencil = stencil;
 		fbo->fbz = z;
 		fbo->status = This->ext->glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	}
-	else if(This->ext->GLEXT_EXT_framebuffer_object)
-	{
-		if (This->currentfbo != fbo) This->ext->glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->fbo);
-		This->currentfbo = fbo;
-		This->ext->glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, color->target, color->id, level);
-		fbo->fbcolor = color;
-		if(stencil)
-		{
-			if(z)
-			{
-				This->ext->glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, z->target, z->id, zlevel);
-				This->ext->glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, z->target, z->id, zlevel);
-			}
-			else
-			{
-				This->ext->glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, 0, 0);
-				This->ext->glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D, 0, 0);
-			}
-		}
-		else
-		{
-			This->ext->glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D, 0, 0);
-			if (z)This->ext->glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, z->target, z->id, zlevel);
-			else This->ext->glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, 0, 0);
-		}
-		fbo->stencil = stencil;
-		fbo->fbz = z;
-		fbo->status = This->ext->glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	}
 }
 
@@ -228,7 +192,6 @@ GLenum glUtil_SetFBO(glUtil *This, FBO *fbo)
 	if(!fbo)
 	{
 		if (This->ext->GLEXT_ARB_framebuffer_object) This->ext->glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		else if (This->ext->GLEXT_EXT_framebuffer_object) This->ext->glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
 	else
 	{
@@ -237,18 +200,12 @@ GLenum glUtil_SetFBO(glUtil *This, FBO *fbo)
 			This->ext->glBindFramebuffer(GL_FRAMEBUFFER, fbo->fbo);
 			fbo->status = This->ext->glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		}
-		else if (This->ext->GLEXT_EXT_framebuffer_object)
-		{
-			This->ext->glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->fbo);
-			fbo->status = This->ext->glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-		}
 	}
 	This->currentfbo = fbo;
 	if (fbo) return fbo->status;
 	else
 	{
 		if (This->ext->GLEXT_ARB_framebuffer_object) return This->ext->glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		else if (This->ext->GLEXT_EXT_framebuffer_object) return This->ext->glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 		else return 0;
 	}
 }

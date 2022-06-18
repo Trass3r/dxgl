@@ -4056,7 +4056,6 @@ void glRenderer__MakeTexturePrimary(glRenderer *This, glTexture *texture, glText
 
 void glRenderer__DXGLBreak(glRenderer *This, BOOL setbusy)
 {
-	if (This->ext->GLEXT_GREMEDY_frame_terminator) This->ext->glFrameTerminatorGREMEDY();
 	if(setbusy) SetEvent(This->busy);
 }
 
