@@ -1504,6 +1504,10 @@ BOOL glRenderer__InitGL(glRenderer *This, int width, int height, int bpp, int fu
 	}
 	InterlockedDecrement((LONG*)&gllock);
 	LeaveCriticalSection(&dll_cs);
+
+	if (!gladLoadGL())
+		return FALSE;
+
 	This->ext = (glExtensions *)malloc(sizeof(glExtensions));
 	glExtensions_Init(This->ext);
 	glUtil_Create(This->ext, &This->util);
