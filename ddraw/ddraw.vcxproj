@@ -926,6 +926,9 @@
   <ItemGroup>
     <ResourceCompile Include="ddraw.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="dxgl.natvis" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

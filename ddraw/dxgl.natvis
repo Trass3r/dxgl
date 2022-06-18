@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <UIVisualizer ServiceId="{A452AFEA-3DF6-46BB-9177-C0B08F318025}" Id="1"
+      MenuName="Add to Image Watch"/>
+
+  <Type Name="glTexture">
+    <UIVisualizer ServiceId="{A452AFEA-3DF6-46BB-9177-C0B08F318025}" Id="1" />
+  </Type>
+
+
+  <Type Name="glTexture">
+     <Expand>
+      <Synthetic Name="[type]">
+        <DisplayString>UINT8</DisplayString>
+      </Synthetic>
+       <!--
+      <Synthetic Name="[channels]">
+        <DisplayString>BGRA</DisplayString>
+      </Synthetic>
+      -->
+      <Item Name="[channels]">1</Item>
+      <Item Name="[width]">bigwidth</Item>
+      <Item Name="[height]">bigheight</Item>
+      <Item Name="[data]">(uint8_t*)levels[0].buffer</Item>
+      <Item Name="[stride]">bigwidth</Item>
+       <!--
+      <Item Name="[stride]">levels[0].ddsd.lPitch</Item>
+       -->
+     </Expand>
+  </Type>
+</AutoVisualizer>

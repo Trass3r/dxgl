@@ -994,6 +994,7 @@ void ShaderGen3D_CreateShader(ShaderGen3D *This, int index, __int64 id, __int64 
 	GLint srclen = strlen(src);
 	This->ext->glShaderSource(This->genshaders[index].shader.vs,1,&src,&srclen);
 	This->ext->glCompileShader(This->genshaders[index].shader.vs);
+	glObjectLabel(GL_SHADER, This->genshaders[index].shader.vs, -1, idstring);
 	GLint result;
 	char *infolog = NULL;
 	This->ext->glGetShaderiv(This->genshaders[index].shader.vs,GL_COMPILE_STATUS,&result);
@@ -1593,6 +1594,7 @@ void ShaderGen3D_CreateShader(ShaderGen3D *This, int index, __int64 id, __int64 
 	srclen = strlen(src);
 	This->ext->glShaderSource(This->genshaders[index].shader.fs,1,&src,&srclen);
 	This->ext->glCompileShader(This->genshaders[index].shader.fs);
+	glObjectLabel(GL_SHADER, This->genshaders[index].shader.fs, -1, idstring);
 	This->ext->glGetShaderiv(This->genshaders[index].shader.fs,GL_COMPILE_STATUS,&result);
 #ifdef _DEBUG
 	if(!result)
@@ -1609,6 +1611,7 @@ void ShaderGen3D_CreateShader(ShaderGen3D *This, int index, __int64 id, __int64 
 	OutputDebugStringA("\nLinking program:\n");
 #endif
 	This->genshaders[index].shader.prog = This->ext->glCreateProgram();
+	glObjectLabel(GL_PROGRAM, This->genshaders[index].shader.prog, -1, idstring);
 	This->ext->glAttachShader(This->genshaders[index].shader.prog,This->genshaders[index].shader.vs);
 	This->ext->glAttachShader(This->genshaders[index].shader.prog,This->genshaders[index].shader.fs);
 	This->ext->glLinkProgram(This->genshaders[index].shader.prog);

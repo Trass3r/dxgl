@@ -29,6 +29,7 @@
 #include "util.h"
 #include <stdarg.h>
 #include "hooks.h"
+#include "glutils.h"
 
 extern "C" {
 
@@ -1427,6 +1428,30 @@ DWORD glRenderer__Entry(glRenderer *This)
 	return 0;
 }
 
+static void setupDebugOutputCallback()
+{
+	auto callback = [](GLenum source,
+		                GLenum type,
+		                GLuint /*id*/,
+		                GLenum severity,
+		                GLsizei length,
+		                const GLchar* message,
+		                const void*) {
+		char buf[256];
+		snprintf(buf, sizeof(buf), "[%s] %s (%s): %.*s\n",
+			debugSourceString(source),
+			debugTypeString(type), // could be GL_DEBUG_TYPE_PUSH_GROUP
+			debugSeverityString(severity),
+			length, message);
+		OutputDebugStringA(buf);
+		if (type == GL_DEBUG_TYPE_ERROR || severity == GL_DEBUG_SEVERITY_HIGH)
+			__debugbreak();
+			//exit(1);
+	};
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(callback, nullptr);
+}
+
 /**
   * Creates a render window and initializes OpenGL.
   * @param This
@@ -1502,11 +1527,39 @@ BOOL glRenderer__InitGL(glRenderer *This, int width, int height, int bpp, int fu
 		LeaveCriticalSection(&dll_cs);
 		return FALSE;
 	}
+	static const int contextAttribs[] = {
+		WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
+		WGL_CONTEXT_MINOR_VERSION_ARB, 6,
+		WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_DEBUG_BIT_ARB,
+		WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
+		0};
+	auto wglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress("wglCreateContextAttribsARB");
+	auto newRC = wglCreateContextAttribsARB(This->hDC, nullptr, contextAttribs);
+	if (!newRC)
+	{
+		DWORD err = (uint16_t)GetLastError();
+		if (err == ERROR_INVALID_VERSION_ARB)
+		{
+		}
+		else if (err == ERROR_INVALID_PROFILE_ARB)
+		{
+		}
+	}
+	else
+	{
+		wglMakeCurrent(nullptr, nullptr);
+		wglDeleteContext(This->hRC);
+		This->hRC = newRC;
+		wglMakeCurrent(This->hDC, This->hRC);
+	}
+
 	InterlockedDecrement((LONG*)&gllock);
 	LeaveCriticalSection(&dll_cs);
 
 	if (!gladLoadGL())
 		return FALSE;
+
+	setupDebugOutputCallback();
 
 	This->ext = (glExtensions *)malloc(sizeof(glExtensions));
 	glExtensions_Init(This->ext);
@@ -1790,6 +1843,11 @@ void RotateBlt90(BltVertex *vertices, int times)
 
 void glRenderer__Blt(glRenderer *This, BltCommand *cmd, BOOL backend)
 {
+	static char buf[256];
+	snprintf(buf, sizeof(buf), "Blt [%d %d %dx%d] <- [%d %d %dx%d]", cmd->destrect.left, cmd->destrect.top, cmd->destrect.right - cmd->destrect.left, cmd->destrect.bottom - cmd->destrect.top,
+		cmd->srcrect.left, cmd->srcrect.top, cmd->srcrect.right - cmd->srcrect.left, cmd->srcrect.bottom - cmd->srcrect.top);
+	GLScopedDebugMarker scope(buf);
+
 	int rotates = 0;
 	BOOL usedest = FALSE;
 	BOOL usepattern = FALSE;
@@ -2484,6 +2542,7 @@ static BOOL WINAPI _UpdateLayeredWindow(HWND hWnd, HDC hdcDst, POINT *pptDst, SI
 
 void glRenderer__DrawScreen(glRenderer *This, glTexture *texture, glTexture *paltex, GLint vsync, glTexture *previous, BOOL setsync, BOOL settime, OVERLAY *overlays, int overlaycount)
 {
+	GLScopedDebugMarker scope("DrawScreen");
 	int progtype;
 	RECT r, r2;
 	int i;
@@ -3167,6 +3226,9 @@ void glRenderer__DrawPrimitives(glRenderer *This, RenderTarget *target, GLenum m
 void glRenderer__DrawPrimitivesOld(glRenderer *This, RenderTarget *target, GLenum mode, GLVERTEX *vertices, int *texformats, DWORD count, LPWORD indices,
 	DWORD indexcount, DWORD flags)
 {
+	static char buf[256];
+	snprintf(buf, sizeof(buf), "%s %d", indices ? "DrawIndexedPrimitive" : "DrawPrimitive", indices ? indexcount : count);
+	GLScopedDebugMarker scope(buf);
 	BOOL haslights = FALSE;
 	bool transformed;
 	int i;
