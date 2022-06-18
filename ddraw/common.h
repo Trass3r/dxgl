@@ -32,8 +32,7 @@
 #endif
 #include "include/ddraw.h"
 #include "include/d3d.h"
-#include "GL/gl.h"
-#include "include/GL/glext.h"
+#include <glad.h>
 #include "include/GL/wglext.h"
 #include "struct.h"
 #include "const.h"
