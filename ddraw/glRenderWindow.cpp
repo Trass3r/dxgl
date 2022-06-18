@@ -70,6 +70,7 @@ HRESULT glRenderWindow_Create(int width, int height, BOOL fullscreen,
 	WaitForObjectAndMessages(This->ReadyEvent);
 	CloseHandle(This->ReadyEvent);
 	This->ReadyEvent = NULL;
+	return 0;
 }
 
 DWORD WINAPI glRenderWindow_ThreadEntry(void *entry)
@@ -79,7 +80,7 @@ DWORD WINAPI glRenderWindow_ThreadEntry(void *entry)
 
 DWORD glRenderWindow__Entry(glRenderWindow *This)
 {
-	char* windowname;
+	const char* windowname;
 	if (This->device) windowname = "DirectDrawDeviceWnd";
 	else windowname = "Renderer";
 	MSG Msg;

@@ -2161,7 +2161,7 @@ void glRenderer__Blt(glRenderer *This, BltCommand *cmd, BOOL backend)
 		((ddsd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE) &&
 		!(ddsd.ddsCaps.dwCaps & DDSCAPS_FLIP)))
 		if(!(cmd->flags & 0x80000000)) glRenderer__DrawScreen(This,cmd->dest,cmd->dest->palette,0,NULL,FALSE,TRUE,NULL,0);
-	This->outputs[0] = DD_OK;
+	This->outputs[0] = (void*)DD_OK;
 	if(!backend) SetEvent(This->busy);
 }
 
@@ -3583,7 +3583,7 @@ void glRenderer__DepthFill(glRenderer *This, BltCommand *cmd, glTexture *parent,
 	glUtil_ClearDepth(This->util, cmd->bltfx.dwFillDepth / (double)0xFFFF); // FIXME:  SOTE depth workaround
 	glClear(GL_DEPTH_BUFFER_BIT);
 	if (usedestrect)glUtil_SetScissor(This->util, false, 0, 0, 0, 0);
-	This->outputs[0] = DD_OK;
+	This->outputs[0] = (void*)DD_OK;
 	SetEvent(This->busy);
 }
 
