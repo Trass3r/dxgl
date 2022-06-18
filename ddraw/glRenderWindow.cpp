@@ -118,8 +118,8 @@ DWORD glRenderWindow__Entry(glRenderWindow *This)
 			"DirectDrawDeviceWnd", windowname, WS_POPUP, 0, 0, This->width, This->height, 0, 0, NULL, This);
 		SetWindowPos(This->hWnd, HWND_TOP, 0, 0, This->width, This->height, SWP_SHOWWINDOW | SWP_NOACTIVATE);
 	}
-#ifdef _DEBUG
-	if (RegisterHotKey(This->hWnd, 1, MOD_CONTROL, VK_CANCEL)) hotkeyregistered = true;
+#if 1 //def _DEBUG
+	if (RegisterHotKey(This->hWnd, 1, 0, VK_F11)) hotkeyregistered = true;
 	else
 	{
 		TRACE_STRING("Failed to register hotkey.\n");
@@ -159,7 +159,7 @@ DWORD WINAPI BeepThread(void *unused)
 	Beep(3600,150);
 	return 0;
 }
-
+extern "C" extern bool debugRenderingEnabled;
 LRESULT glRenderWindow_WndProc(glRenderWindow *This, HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	HWND hParent;
@@ -200,6 +200,8 @@ LRESULT glRenderWindow_WndProc(glRenderWindow *This, HWND hwnd, UINT msg, WPARAM
 		This->dead = TRUE;
 		return 0;
 	case WM_HOTKEY:
+		debugRenderingEnabled = !debugRenderingEnabled;
+		break;
 		if (dxglcfg.DebugTraceLevel)
 		{
 			trace_end = TRUE;
@@ -215,6 +217,17 @@ LRESULT glRenderWindow_WndProc(glRenderWindow *This, HWND hwnd, UINT msg, WPARAM
 			DebugBreak();
 			#endif
 		}
+		break;
+	case WM_KEYUP:
+		switch (wParam)
+		{
+		case VK_F11:
+			debugRenderingEnabled = !debugRenderingEnabled;
+			break;
+		default:
+			break;
+		}
+		break;
 	default:
 		return DefWindowProc(hwnd,msg,wParam,lParam);
 	}

@@ -30,6 +30,7 @@
 #include <stdarg.h>
 #include "hooks.h"
 #include "glutils.h"
+#include "stb_image_write.h"
 
 extern "C" {
 
@@ -1876,6 +1877,59 @@ void glRenderer__Blt(glRenderer *This, BltCommand *cmd, BOOL backend)
 		destrect2.right = destrect.right - destrect.left;
 		destrect2.bottom = destrect.bottom - destrect.top;
 	}
+	//MIPLEVEL& src = cmd->src->levels[cmd->srclevel];
+	// 	if (src.ddsd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER)
+	if (false)//This->util->currentfbo) // && This->util->currentfbo->fbz)
+	{
+		GLScopedDebugMarker scope("SSAO");
+		const auto vscode = R"(#version 460
+layout(location = 0) out vec2 texCoord;
+void main()
+{
+    vec2 position = vec2(gl_VertexID % 2, gl_VertexID / 2) * 4.0 - 1;
+    texCoord = (position + 1) * 0.5;
+	// flip horizontally
+	//texCoord = vec2(texCoord.x, 1 - texCoord.y);
+    gl_Position = vec4(position, 0, 1);
+}
+)";
+		const auto fscode = R"(#version 460
+layout(location = 0) in vec2 texCoord;
+layout(location = 0) uniform sampler2D depthTex;
+layout(location = 0) out vec4 outColor;
+void main()
+{
+	const float near = 0.1;
+	const float far = 100;
+	// z' = (Q*z - Q*near) / z
+	// z' = Q - Q*near / z
+	// z' = Q (1 - near / z)
+	// z	= Q*near / (Q - z')
+	// z	= near / (1 - z' / Q)
+	const float Q = far / (far - near);
+	float z_b = texture(depthTex, texCoord).x;
+    //outColor = vec4(vec3(z_b), 1); return;
+
+	//float z_n = 2.0 * z_b - 1.0;
+	//float z_e = 2.0 * zNear * zFar / (zFar + zNear - z_n * (zFar - zNear));
+	float z	= Q * near / (Q - z_b);
+	z = 1/(1-z_b)/100; // should be equal to next, but isn't
+	//z = 1 / (1 - z_b / Q);
+	outColor = vec4(z,z,z,1); return;
+	//z = z_b;
+}
+)";
+		GLSLShader vs(GL_VERTEX_SHADER, "ssao vs", vscode);
+		GLSLShader fs(GL_FRAGMENT_SHADER, "ssao fs", fscode);
+		GLSLProgram prog("ssao", {&vs, &fs});
+		//glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, This->util->currentfbo->fbz->id);
+		//glUniform1i(0, 0); // texture unit
+		//glDepthMask(GL_FALSE);
+		glDisable(GL_DEPTH_TEST);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glUseProgram(This->shaders->gen3d->current_prog);
+	}
 	if ((cmd->bltfx.dwSize == sizeof(DDBLTFX)) && (cmd->flags & DDBLT_ROP))
 	{
 		shaderid = PackROPBits(cmd->bltfx.dwROP, cmd->flags);
@@ -3223,6 +3277,8 @@ void glRenderer__DrawPrimitives(glRenderer *This, RenderTarget *target, GLenum m
 	}
 }
 
+bool debugRenderingEnabled = false;
+
 void glRenderer__DrawPrimitivesOld(glRenderer *This, RenderTarget *target, GLenum mode, GLVERTEX *vertices, int *texformats, DWORD count, LPWORD indices,
 	DWORD indexcount, DWORD flags)
 {
@@ -3476,8 +3532,102 @@ void glRenderer__DrawPrimitivesOld(glRenderer *This, RenderTarget *target, GLenu
 	glRenderer__SetFogDensity(This,*(GLfloat*)(&This->renderstate[D3DRENDERSTATE_FOGDENSITY]));
 	glUtil_SetPolyMode(This->util, (D3DFILLMODE)This->renderstate[D3DRENDERSTATE_FILLMODE]);
 	glUtil_SetShadeMode(This->util, (D3DSHADEMODE)This->renderstate[D3DRENDERSTATE_SHADEMODE]);
-	if(indices) glDrawElements(mode,indexcount,GL_UNSIGNED_SHORT,indices);
-	else glDrawArrays(mode,0,count);
+	if (indices)
+	{
+		#if 1
+		static GLuint oneColorProg = [=]() {
+			//This->ext->glClipControl(GL_UPPER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
+			auto vsShaderSrc = R"(#version 460
+in vec3 xyz;
+in float rhw;
+in vec4 rgba0;
+in vec2 st0;
+in vec2 st1;
+in vec2 st2;
+in vec2 st3;
+in vec2 st4;
+in vec2 st5;
+in vec2 st6;
+in vec2 st7;
+
+layout(location = 0) uniform float width;
+layout(location = 1) uniform float height;
+layout(location = 2) uniform float xoffset;
+layout(location = 3) uniform float yoffset;
+void main()
+{
+	gl_Position = vec4(((xyz.x-xoffset)/(width/2.0)-1.0)/rhw, -((xyz.y-yoffset)/(height/2.0)-1.0)/rhw, xyz.z/rhw, 1.0/rhw);
+}
+)";
+
+			auto oneColorSrc = R"(#version 460
+layout(location = 99)
+uniform vec4 onecolor;
+void main()
+{
+	gl_FragColor = onecolor;
+}
+)";
+			GLuint vsShader = glCreateShader(GL_VERTEX_SHADER);
+			glShaderSource(vsShader, 1, &vsShaderSrc, nullptr);
+			glCompileShader(vsShader);
+			GLuint oneColorShader = glCreateShader(GL_FRAGMENT_SHADER);
+			glShaderSource(oneColorShader, 1, &oneColorSrc, nullptr);
+			glCompileShader(oneColorShader);
+			GLuint oneColorProg = glCreateProgram();
+			glObjectLabel(GL_SHADER, oneColorShader, sizeof("onecolor"), "onecolor");
+			glAttachShader(oneColorProg, vsShader);
+			glAttachShader(oneColorProg, oneColorShader);
+			glLinkProgram(oneColorProg);
+			// have to check status as glLinkProgram always returns "no error"
+			GLint status;
+			glGetProgramiv(oneColorProg, GL_LINK_STATUS, &status);
+			char logbuf[256];
+			glGetProgramInfoLog(oneColorProg, sizeof(logbuf), nullptr, logbuf);
+			glUseProgram(oneColorProg);
+			glUniform1f(0, (GLfloat)This->viewport.dwWidth);
+			glUniform1f(1, (GLfloat)This->viewport.dwHeight);
+			glUniform1f(2, (GLfloat)This->viewport.dwX);
+			glUniform1f(3, (GLfloat)This->viewport.dwY);
+			//glUniform1i(prog->uniforms[141], This->renderstate[D3DRENDERSTATE_ALPHAREF]);
+			return oneColorProg;
+		}();
+		if (debugRenderingEnabled)
+		{
+			GLScopedDebugMarker ovscope("Depth Overlay");
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+			// copy current partial frame
+			const int screenxres = 1920;
+			const int gamexres = 1600;
+			const int x = (screenxres - gamexres) / 2;
+			// copy and flip
+			glBlitFramebuffer(0, This->viewport.dwHeight, This->viewport.dwWidth, 0, x, 0, gamexres + x, 1080, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+			SwapBuffers(This->hDC);
+			//glFinish();
+			Sleep(indexcount);
+			glViewport(x, 0, gamexres, 1080);
+			glDepthMask(GL_FALSE);
+			glDisable(GL_DEPTH_TEST);
+			glUseProgram(oneColorProg);
+			glUniform4f(99, 1, 0, 0, 1);
+			glDrawElements(mode, indexcount, GL_UNSIGNED_SHORT, indices);
+			glEnable(GL_DEPTH_TEST);
+			glUniform4f(99, 0, 1, 0, 1);
+			glDrawElements(mode, indexcount, GL_UNSIGNED_SHORT, indices);
+			//glFlush();
+			SwapBuffers(This->hDC);
+			//glFinish();
+			Sleep(indexcount);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, This->util->currentfbo->fbo);
+			glViewport(This->viewport.dwX, This->viewport.dwY, This->viewport.dwWidth, This->viewport.dwHeight);
+			glDepthMask(This->util->depthwrite);
+			glUseProgram(prog->prog);
+		}
+#endif
+		glDrawElements(mode, indexcount, GL_UNSIGNED_SHORT, indices);
+	}
+	else
+		glDrawArrays(mode, 0, count);
 	if(target->zbuffer) target->zbuffer->levels[target->zlevel].dirty |= 2;
 	target->target->levels[target->level].dirty |= 2;
 	if(flags & D3DDP_WAIT) glFlush();
